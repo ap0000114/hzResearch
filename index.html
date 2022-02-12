@@ -1,0 +1,403 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script>
+
+        var NotePlayTime = 1000;
+
+        var equalHz = {
+            chart: new Array(),
+            make: function (octaveLength, centerFreq) {
+                centerFreq = centerFreq / 16;
+
+                let octaveCount = 0;
+                let noteName = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"];
+                let noteNameCount = 0;
+
+                for (let i = 0; i < octaveLength * 12; i++, noteNameCount++) {
+
+                    if (i % 12 == 0) {
+                        noteNameCount = 0;
+                    } else if (noteName[noteNameCount] == "C") {
+                        octaveCount++;
+                    }
+
+                    let hz = (2 ** (i / 12)) * centerFreq;
+
+                    let obj = {
+                        number: i,
+                        noteName: noteName[noteNameCount],
+                        octaveCount: octaveCount,
+                        hz: hz,
+                        note: noteName[noteNameCount] + octaveCount
+                    }
+
+                    this.chart.push(obj);
+                }
+            }
+        }
+
+        var justHz = {
+            chart: new Array(),
+            make: function (level, centerFreq) {
+
+                centerFreq = centerFreq / 2;
+
+                for (let i = 1; i <= level; i++) {
+                    let j = 1;
+                    let thisLevel = new Array();
+
+                    for (; j <= i; j++) {
+                        thisLevel.push({
+                            "ratio": j + "/" + i,
+                            "denominator": i,
+                            "numerator ": j,
+                            "hz": centerFreq * (j / i)
+                        });
+                    }
+
+                    for (j = j - 2; j >= 1; j--) {
+                        thisLevel.push({
+                            "ratio": i + "/" + j,
+                            "denominator": j,
+                            "numerator ": i,
+                            "hz": centerFreq * (i / j)
+                        });
+                    }
+
+                    this.chart.push(thisLevel);
+                }
+            }
+        }
+
+        var compareHz = {
+            chart: new Array(),
+            make: function (equalHz, justHz) {
+                equalHz = equalHz.chart;
+                justHz = justHz.chart;
+
+                for (let i of justHz) {
+                    for (let j of i) {
+                        let near;
+                        let abs = 0;
+                        let min = 100;
+
+                        for (var k = 0; k < equalHz.length; k++) {
+                            abs = ((equalHz[k].hz - j.hz) < 0) ?
+                                -(equalHz[k].hz - j.hz) : (equalHz[k].hz - j.hz);
+                            if (abs < min) {
+                                min = abs; // MIN
+                                near = equalHz[k]; // Near : 가까운 값
+                            }
+                        }
+
+                        this.chart.push({
+                            equalHz: near,
+                            justHz: j,
+                            cent: Math.log(j.hz / near.hz) / Math.log(2) * 1200
+                        });
+                    }
+                }
+            }
+        }
+
+        function createEqualTable() {
+
+            var equalTable = document.createElement('table');
+            equalTable.id = "equalTable";
+
+            var equalTr = document.createElement('tr');
+            var equalThTitle = document.createElement('th');
+            var equalThTitleText = document.createTextNode("Equal");
+            equalThTitle.appendChild(equalThTitleText);
+            equalTable.appendChild(equalThTitle);
+
+            var equalTr = document.createElement('tr');
+            var equalTdNote = document.createElement('td');
+            var equalTdNoteText = document.createTextNode("Hz");
+            var equalTdHz = document.createElement('td');
+            var equalTdHzText = document.createTextNode("Note");
+
+            equalTdHz.appendChild(equalTdHzText);
+            equalTr.appendChild(equalTdHz);
+            equalTdNote.appendChild(equalTdNoteText);
+            equalTr.appendChild(equalTdNote);
+            equalTable.appendChild(equalTr);
+
+            for (var i of equalHz.chart) {
+                var equalTr = document.createElement('tr');
+                equalTr.hz = i.hz;
+                equalTr.addEventListener('click', function () {
+                    var hzBox = document.createElement('div');
+                    hzBox.className = "hzBox";
+                    hzBox.hz = this.hz;
+
+                    var hzBoxText = document.createTextNode(Math.round(this.hz * 100) / 100);
+                    hzBox.appendChild(hzBoxText);
+                    hzBox.addEventListener('click', function(){
+                        playNote(this.hz, NotePlayTime);
+                    })
+                    
+                    window.document.getElementById("boxArea").appendChild(hzBox);
+                });
+
+                var equalTdNote = document.createElement('td');
+                var equalTdNoteText = document.createTextNode(i.note);
+                equalTdNote.appendChild(equalTdNoteText);
+
+                var equalTdHz = document.createElement('td');
+                var equalTdHzText = document.createTextNode(Math.round(i.hz * 100) / 100);
+                equalTdHz.appendChild(equalTdHzText);
+
+                equalTr.appendChild(equalTdNote);
+                equalTr.appendChild(equalTdHz);
+                equalTable.appendChild(equalTr);
+            }
+
+            window.document.getElementById("chart").appendChild(equalTable);
+        }
+
+        function createjustTable() {
+
+            var justTable = document.createElement('table');
+            justTable.id = "justTable";
+
+            var justTr = document.createElement('tr');
+            var justThTitle = document.createElement('th');
+            var justThTitleText = document.createTextNode("Just");
+            justThTitle.appendChild(justThTitleText);
+            justTable.appendChild(justThTitle);
+
+            var justTr = document.createElement('tr');
+            var justTdRatio = document.createElement('td');
+            var justTdRatioText = document.createTextNode("Ratio");
+            var justTdHz = document.createElement('td');
+            var justTdHzText = document.createTextNode("Hz");
+
+            justTdRatio.appendChild(justTdRatioText);
+            justTr.appendChild(justTdRatio);
+            justTdHz.appendChild(justTdHzText);
+            justTr.appendChild(justTdHz);
+            justTable.appendChild(justTr);
+
+            for (var i of justHz.chart) {
+                for (var j of i) {
+
+                    var justTr = document.createElement('tr');
+
+                    var justTdRatio = document.createElement('td');
+                    var justTdRatioText = document.createTextNode(j.ratio);
+                    justTdRatio.appendChild(justTdRatioText);
+
+                    var justTdHz = document.createElement('td');
+                    var justTdHzText = document.createTextNode(Math.round(j.hz * 100) / 100);
+                    justTdHz.appendChild(justTdHzText);
+
+                    justTr.appendChild(justTdRatio);
+                    justTr.appendChild(justTdHz);
+                    justTable.appendChild(justTr);
+                }
+            }
+
+            window.document.getElementById("chart").appendChild(justTable);
+        }
+
+        function createCompareTable() {
+            var compareTable = document.createElement('table');
+            compareTable.id = "compareTable";
+
+            var compareTr = document.createElement('tr');
+            var compareThTitle = document.createElement('th');
+            var compareThTitleText = document.createTextNode("Compare");
+            compareThTitle.appendChild(compareThTitleText);
+            compareTable.appendChild(compareThTitle);
+
+            var compareTr = document.createElement('tr');
+            var compareTdRatio = document.createElement('td');
+            var compareTdRatioText = document.createTextNode("Ratio");
+            var compareTdNote = document.createElement('td');
+            var compareTdNoteText = document.createTextNode("Note");
+            var compareTdJustHz = document.createElement('td');
+            var compareTdJustHzText = document.createTextNode("Just Hz");
+            var compareTdEqualHz = document.createElement('td');
+            var compareTdEqualHzText = document.createTextNode("Equal Hz");
+            var compareTdCent = document.createElement('td');
+            var compareTdCentText = document.createTextNode("Cent");
+
+            compareTdRatio.appendChild(compareTdRatioText);
+            compareTr.appendChild(compareTdRatio);
+            compareTdNote.appendChild(compareTdNoteText);
+            compareTr.appendChild(compareTdNote);
+            compareTdJustHz.appendChild(compareTdJustHzText);
+            compareTr.appendChild(compareTdJustHz);
+            compareTdEqualHz.appendChild(compareTdEqualHzText);
+            compareTr.appendChild(compareTdEqualHz);
+            compareTdCent.appendChild(compareTdCentText);
+            compareTr.appendChild(compareTdCent);
+            compareTable.appendChild(compareTr);
+
+            for (var i of compareHz.chart) {
+                var compareTr = document.createElement('tr');
+                compareTr.hz = i.justHz.hz;
+                compareTr.addEventListener('click', function () {
+                    var hzBox = document.createElement('div');
+                    hzBox.className = "hzBox";
+                    hzBox.hz = this.hz;
+
+                    var hzBoxText = document.createTextNode((Math.round(this.hz * 100) / 100));
+                    hzBox.appendChild(hzBoxText);
+                    hzBox.addEventListener('click', function(){
+                        playNote(this.hz, NotePlayTime);
+                    })
+                    
+                    window.document.getElementById("boxArea").appendChild(hzBox);
+                });
+
+                var compareTdRatio = document.createElement('td');
+                var compareTdRatioText = document.createTextNode(i.justHz.ratio);
+                compareTdRatio.appendChild(compareTdRatioText);
+                compareTr.appendChild(compareTdRatio);
+
+                var compareTdNote = document.createElement('td');
+                var compareTdNoteText = document.createTextNode(i.equalHz.note);
+                compareTdNote.appendChild(compareTdNoteText);
+                compareTr.appendChild(compareTdNote);
+
+                var compareTdJustHz = document.createElement('td');
+                var compareTdJustHzText = document.createTextNode(Math.round(i.justHz.hz * 100) / 100);
+                compareTdJustHz.appendChild(compareTdJustHzText);
+                compareTr.appendChild(compareTdJustHz);
+
+                var compareTdEqualHz = document.createElement('td');
+                var compareTdEqualHzText = document.createTextNode(Math.round(i.equalHz.hz * 100) / 100);
+                compareTdEqualHz.appendChild(compareTdEqualHzText);
+                compareTr.appendChild(compareTdEqualHz);
+
+                var compareTdCent = document.createElement('td');
+                var compareTdCentText = document.createTextNode(Math.round(i.cent * 100) / 100);
+                compareTdCent.appendChild(compareTdCentText);
+                compareTr.appendChild(compareTdCent);
+
+                compareTable.appendChild(compareTr);
+            }
+
+            window.document.getElementById("chart").appendChild(compareTable);
+        }
+
+        function chartChange(event){
+            if(event.path[0].value == "Just"){ 
+                window.document.getElementById("justTable").style.display = "block";
+                window.document.getElementById("equalTable").style.display = "none";
+                window.document.getElementById("compareTable").style.display = "none";
+
+            } else if(event.path[0].value == "Equal"){
+                window.document.getElementById("justTable").style.display = "none";
+                window.document.getElementById("equalTable").style.display = "block";
+                window.document.getElementById("compareTable").style.display = "none";
+
+            } else if(event.path[0].value == "Compare"){
+                window.document.getElementById("justTable").style.display = "none";
+                window.document.getElementById("equalTable").style.display = "none";
+                window.document.getElementById("compareTable").style.display = "block";
+
+            }
+        }
+
+        function clearBoxArea(event){
+            var node = window.document.getElementById("boxArea")
+
+            while (node.hasChildNodes()) {	
+                node.removeChild(node.firstChild);
+            }
+        }
+
+        window.onload = function () {
+
+            equalHz.make(24, 440);
+            justHz.make(16, 440);
+            compareHz.make(equalHz, justHz);
+
+            console.dir(equalHz);
+            console.dir(justHz);
+            console.dir(compareHz);
+
+            createCompareTable();
+            createEqualTable();
+            createjustTable();
+        };
+
+        function playNote(hz, time) {
+            let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let oscillator = audioCtx.createOscillator();
+
+            oscillator.type = 'sine';
+
+            oscillator.frequency.setValueAtTime(hz, 0);
+            oscillator.start();
+            oscillator.connect(audioCtx.destination);
+
+            console.dir(oscillator);
+
+            setTimeout(function () {
+                oscillator.disconnect(audioCtx.destination);
+                oscillator.stop();
+            }, time);
+        }
+
+    </script>
+
+    <style>
+        table {
+            width: 50%;
+            border: 1px solid #444444;
+            word-break: break-all;
+        }
+
+        th,
+        td {
+            border: 1px solid #444444;
+            padding: 1%;
+        }
+
+        #chart {
+            display: block;
+        }
+
+        #compareTable {
+            display: none;
+            float: right;
+        }
+
+        #equalTable {
+            display: none;
+            float: right;
+        }
+
+        #justTable {
+            display: none;
+            float: right;
+        }
+
+        .hzBox {
+            background: aqua;
+            height: 100px; 
+            width: 100px;
+        }
+    </style>
+</head>
+
+<body>
+    1.0
+    <div id="menu">
+        <label><input type='radio' name='chart' value='Just' onclick='chartChange(event)' />Just</label>
+        <label><input type='radio' name='chart' value='Equal' onclick='chartChange(event)' />Equal</label>
+        <label><input type='radio' name='chart' value='Compare' onclick='chartChange(event)' />Compare</label>
+        <input type='button' value='Clear' onclick='clearBoxArea(event)' />
+    </div>
+    <div id="chart"></div>
+    <div id="boxArea"></div>
+
+</body>
+
+</html>
