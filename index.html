@@ -347,6 +347,15 @@
             }, time);
         }
 
+        function playAll(){
+            let hzBox = window.document.getElementsByClassName("hzBox");
+
+            for(let i = 0; hzBox.length > i; i++){
+                console.dir(hzBox[i].hz);
+                playNote(hzBox[i].hz, NotePlayTime);
+            }
+        }
+
     </script>
 
     <style>
@@ -390,11 +399,13 @@
 </head>
 
 <body>
+    v1
     <div id="menu">
         <label><input type='radio' name='chart' value='Just' onclick='chartChange(event)' />Just</label>
         <label><input type='radio' name='chart' value='Equal' onclick='chartChange(event)' />Equal</label>
         <label><input type='radio' name='chart' value='Compare' onclick='chartChange(event)' />Compare</label>
         <input type='button' value='Clear' onclick='clearBoxArea(event)' />
+        <input type='button' value='PlayAll' onclick='playAll(event)' />
     </div>
     <div id="chart"></div>
     <div id="boxArea"></div>
